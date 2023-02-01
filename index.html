@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Google Docs API Quickstart</title>
+    <meta charset="utf-8" />
+</head>
+
+<body>
+    <p>Google Docs API Quickstart</p>
+
+    <!--Add buttons to initiate auth sequence and sign out-->
+    <button id="authorize_button" onclick="handleAuthClick()">Authorize</button>
+    <button id="signout_button" onclick="handleSignoutClick()">Sign Out</button>
+
+    <pre id="content" style="white-space: pre-wrap;"></pre>
+
+    <script type="text/javascript">
+        /* exported gapiLoaded */
+        /* exported gisLoaded */
+        /* exported handleAuthClick */
+        /* exported handleSignoutClick */
+
+        // TODO(developer): Set to client ID and API key from the Developer Console
+        const CLIENT_ID = '951183492988-mcb98i7o9nstvjjana0oonis2gsquv2i.apps.googleusercontent.com';
+        const API_KEY = 'AIzaSyBKY40amw0pC8CEmgtU9JjvKfw-hjcGjrc';
+
+        // Discovery doc URL for APIs used by the quickstart
+        const DISCOVERY_DOC = 'https://docs.googleapis.com/$discovery/rest?version=v1';
+
+        // Authorization scopes required by the API; multiple scopes can be
+        // included, separated by spaces.
+        const SCOPES = 'https://www.googleapis.com/auth/documents.readonly';
+
+        let tokenClient;
+        let gapiInited = false;
+        let gisInited = false;
+
+        document.getElementById('authorize_button').style.visibility = 'hidden';
+        document.getElementById('signout_button').style.visibility = 'hidden';
+
+        /**
+         * Callback after api.js is loaded.
+         */
+        function gapiLoaded() {
+            gapi.load('client', initializeGapiClient);
+        }
+
+        /**
+         * Callback after the API client is loaded. Loads the
+         * discovery doc to initialize the API.
+         */
+        async function initializeGapiClient() {
+            await gapi.client.init({
+                apiKey: API_KEY,
+                discoveryDocs: [DISCOVERY_DOC],
+            });
+            gapiInited = true;
+            maybeEnableButtons();
+        }
+
+        /**
+         * Callback after Google Identity Services are loaded.
+         */
+        function gisLoaded() {
+            tokenClient = google.accounts.oauth2.initTokenClient({
+                client_id: CLIENT_ID,
+                scope: SCOPES,
+                callback: '', // defined later
+            });
+            gisInited = true;
+            maybeEnableButtons();
+        }
+
+        /**
+         * Enables user interaction after all libraries are loaded.
+         */
+        function maybeEnableButtons() {
+            if (gapiInited && gisInited) {
+                document.getElementById('authorize_button').style.visibility = 'visible';
+            }
+        }
+
+        /**
+         *  Sign in the user upon button click.
+         */
+        function handleAuthClick() {
+            tokenClient.callback = async (resp) => {
+                if (resp.error !== undefined) {
+                    throw (resp);
+                }
+                document.getElementById('signout_button').style.visibility = 'visible';
+                document.getElementById('authorize_button').innerText = 'Refresh';
+                await outputContent();
+            };
+
+            if (gapi.client.getToken() === null) {
+                // Prompt the user to select a Google Account and ask for consent to share their data
+                // when establishing a new session.
+                tokenClient.requestAccessToken({prompt: 'consent'});
+            } else {
+                // Skip display of account chooser and consent dialog for an existing session.
+                tokenClient.requestAccessToken({prompt: ''});
+            }
+        }
+
+        /**
+         *  Sign out the user upon button click.
+         */
+        function handleSignoutClick() {
+            const token = gapi.client.getToken();
+            if (token !== null) {
+                google.accounts.oauth2.revoke(token.access_token);
+                gapi.client.setToken('');
+                document.getElementById('content').innerText = '';
+                document.getElementById('authorize_button').innerText = 'Authorize';
+                document.getElementById('signout_button').style.visibility = 'hidden';
+            }
+        }
+
+
+
+
+
+
+
+        async function outputContent() {
+            try {
+                const response = await gapi.client.docs.documents.get({
+                    documentId: '1gCnAL1RwrQZ3TjrYpwnjOjKelZi2T0E1BbOvyox4Ivk',
+                });
+
+                const doc = response.result;
+                const output = `Document ${doc.title} successfully found.\n`;
+                document.getElementById('content').innerText = output;
+
+                var HTML_STR = `
+                    <!DOCTYPE html>
+                    <html lang="en-US">
+
+                    <head>`;
+
+                var PAGE_TITLE, PAGE_DESC, PAGE_URL, BANNER_IMAGE, CATEGORY;
+                var EPOCH_DATE = Date.now() / 1000;
+
+                doc.body.content.forEach(line => {
+                    if (line.paragraph != undefined) {
+                        let style = line.paragraph.paragraphStyle.namedStyleType;
+                        let text = line.paragraph.elements[0].textRun.content;
+
+                        var pageTitleCheck = isPageTitle(text, style);
+                        if (pageTitleCheck !== false) PAGE_TITLE = pageTitleCheck;
+
+                        let pageDescCheck = isPageDescription(text, style);
+                        if (pageDescCheck !== false) PAGE_DESC = pageDescCheck;
+
+                        let pageURLCheck = isPageURL(text, style);
+                        if (pageURLCheck !== false) PAGE_URL = pageURLCheck;
+
+                        let bannerImgCheck = isBannerImg(text, style);
+                        if (bannerImgCheck !== false) BANNER_IMAGE = bannerImgCheck;
+
+                        let categoryCheck = isCategory(text, style);
+                        if (categoryCheck !== false) CATEGORY = categoryCheck;
+
+
+                        HTML_STR += createMetaTagsStr(PAGE_TITLE, PAGE_DESC, PAGE_URL);
+                        HTML_STR += createOGTitlesStr(BANNER_IMAGE, PAGE_TITLE, PAGE_DESC, PAGE_URL, EPOCH_DATE, CATEGORY);
+                    }
+                });
+
+
+                
+                console.log(PAGE_TITLE);
+                console.log(PAGE_DESC);
+                console.log(PAGE_URL);
+                console.log(BANNER_IMAGE);
+                console.log(CATEGORY);
+            } catch (err) {
+                document.getElementById('content').innerText = err.message;
+                console.error(err);
+                return;
+            }
+        }
+
+
+
+
+
+        function isPageTitle(text, style) {
+            if (style == 'TITLE') return text;
+            return false;
+        }
+
+
+        function isPageDescription(text, style) {
+            if (style == 'NORMAL_TEXT' && text.includes("___DESCRIPTION___:")) {
+                let output = text.replace('___DESCRIPTION___: ', '');
+                return output;
+            }
+            return false;
+        }
+
+
+        function isPageURL(text, style) {
+            if (style == 'NORMAL_TEXT' && text.includes("___URL___:")) {
+                let output = text.replace('___URL___: ', '');
+                return output;
+            }
+            return false;
+        }
+
+
+        function isBannerImg(text, style) {
+            if (style == 'NORMAL_TEXT' && text.includes("___BANNER_IMAGE___:")) {
+                let output = text.replace('___BANNER_IMAGE___: ', '');
+                return output;
+            }
+            return false;
+        }
+
+
+        function isCategory(text, style) {
+            if (style == 'NORMAL_TEXT' && text.includes("___CATEGORY___:")) {
+                let output = text.replace('___CATEGORY___: ', '');
+                return output;
+            }
+            return false;
+        }
+
+
+        function createMetaTagsStr( PAGE_TITLE, PAGE_DESC, PAGE_URL) {
+            return `
+            <!-- **************************************** -->
+            <!-- Meta Tags -->
+            <!-- **************************************** -->
+            <link rel="shortcut icon" type="image/png" href="../images/favicon.png" />
+            <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+            <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+            <title>${PAGE_TITLE}</title>
+            <link rel="stylesheet" type="text/css" href="blog-styling-3.css">
+            <meta name="description" content="${PAGE_DESC}" />
+            <link rel="canonical" href="https://www.tresna.co.uk/blog/${PAGE_URL}.htm" />
+            <!-- **************************************** -->
+            `;
+        }
+
+
+        function createOGTitlesStr(BANNER_IMAGE, PAGE_TITLE, PAGE_DESC, PAGE_URL, EPOCH_DATE, CATEGORY) {
+            // ! TODO: Convert the epoch to correct date. Use momentjs
+            return `
+                <!-- **************************************** -->
+                <!-- OG TITLES -->
+                <!-- **************************************** -->
+                <meta property="og:type" content="article" />
+                <meta property="og:image" content="images/${BANNER_IMAGE}">
+                <meta property="og:title" content="${PAGE_TITLE}" />
+                <meta property="og:description" content="${PAGE_DESC}" />
+                <meta property="og:url" content="https://www.tresna.co.uk/blog/${PAGE_URL}.htm" />
+                <meta property="og:site_name" content="Tresna" />
+                <meta property="article:published_time" content="YYYY-MM-DDT00:00:00+00:00" />
+                <meta property="article:author" content="Michael Scott" />
+                <meta name="category" content="${CATEGORY}">
+                <!-- **************************************** -->
+            `;
+        }
+    </script>
+    <script async defer src="https://apis.google.com/js/api.js" onload="gapiLoaded()"></script>
+    <script async defer src="https://accounts.google.com/gsi/client" onload="gisLoaded()"></script>
+</body>
+
+</html>
