@@ -145,6 +145,9 @@
 
                 doc.body.content.forEach(line => {
                     if (line.paragraph != undefined) {
+                        // ****************************************
+                        // * Find the variables in the text
+                        // ****************************************
                         let style = line.paragraph.paragraphStyle.namedStyleType;
                         let text = line.paragraph.elements[0].textRun.content;
 
@@ -162,15 +165,21 @@
 
                         let categoryCheck = isCategory(text, style);
                         if (categoryCheck !== false) CATEGORY = categoryCheck;
+                        // ****************************************
+                        
 
 
+                        // ****************************************
+                        // * Create the HTML
+                        // ****************************************
                         HTML_STR += createMetaTagsStr(PAGE_TITLE, PAGE_DESC, PAGE_URL);
                         HTML_STR += createOGTitlesStr(BANNER_IMAGE, PAGE_TITLE, PAGE_DESC, PAGE_URL, EPOCH_DATE, CATEGORY);
+                        // ****************************************
                     }
                 });
 
 
-                
+
                 console.log(PAGE_TITLE);
                 console.log(PAGE_DESC);
                 console.log(PAGE_URL);
@@ -186,13 +195,17 @@
 
 
 
+        // ****************************************
+        // * Find the variables
+        // ****************************************
 
+        /* Check if it's the page title */
         function isPageTitle(text, style) {
             if (style == 'TITLE') return text;
             return false;
         }
 
-
+        /* Check for page description */
         function isPageDescription(text, style) {
             if (style == 'NORMAL_TEXT' && text.includes("___DESCRIPTION___:")) {
                 let output = text.replace('___DESCRIPTION___: ', '');
@@ -201,7 +214,7 @@
             return false;
         }
 
-
+        /* Check for page url */
         function isPageURL(text, style) {
             if (style == 'NORMAL_TEXT' && text.includes("___URL___:")) {
                 let output = text.replace('___URL___: ', '');
@@ -210,7 +223,7 @@
             return false;
         }
 
-
+        /* Check for banner image */
         function isBannerImg(text, style) {
             if (style == 'NORMAL_TEXT' && text.includes("___BANNER_IMAGE___:")) {
                 let output = text.replace('___BANNER_IMAGE___: ', '');
@@ -219,7 +232,7 @@
             return false;
         }
 
-
+        /* Check for category */
         function isCategory(text, style) {
             if (style == 'NORMAL_TEXT' && text.includes("___CATEGORY___:")) {
                 let output = text.replace('___CATEGORY___: ', '');
@@ -227,8 +240,15 @@
             }
             return false;
         }
+        // ****************************************
+        
 
 
+        // ****************************************
+        // * Create the HTML Strings
+        // ****************************************
+
+        /* Create the meta tags string */
         function createMetaTagsStr( PAGE_TITLE, PAGE_DESC, PAGE_URL) {
             return `
             <!-- **************************************** -->
@@ -246,6 +266,7 @@
         }
 
 
+        /* Create the OG titles */
         function createOGTitlesStr(BANNER_IMAGE, PAGE_TITLE, PAGE_DESC, PAGE_URL, EPOCH_DATE, CATEGORY) {
             // ! TODO: Convert the epoch to correct date. Use momentjs
             return `
@@ -264,6 +285,7 @@
                 <!-- **************************************** -->
             `;
         }
+        // ****************************************
     </script>
     <script async defer src="https://apis.google.com/js/api.js" onload="gapiLoaded()"></script>
     <script async defer src="https://accounts.google.com/gsi/client" onload="gisLoaded()"></script>
